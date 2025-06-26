@@ -1,0 +1,1959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Profitability Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1f2937;
+            line-height: 1.6;
+            padding-bottom: 60px;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .overview-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .overview-card h3 {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        
+        .overview-card .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-tab {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .nav-tab.active {
+            background: white;
+            color: #667eea;
+            border-color: white;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border-radius: 15px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            font-size: 0.9rem;
+        }
+        
+        th, td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid #f3f4f6;
+            white-space: nowrap;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            font-weight: 700;
+            color: #374151;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        tr:hover {
+            background: #f8fafc;
+        }
+        
+        .track-name {
+            font-weight: 700;
+            color: #1f2937;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .artist-name {
+            color: #6b7280;
+            font-size: 0.85rem;
+        }
+        
+        .profitable {
+            color: #059669;
+            font-weight: 600;
+        }
+        
+        .loss {
+            color: #dc2626;
+            font-weight: 600;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .status-profitable {
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            color: #166534;
+        }
+        
+        .status-developing {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+        }
+        
+        .status-loss {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #dc2626;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+        }
+        
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .track-selector {
+            margin-bottom: 25px;
+        }
+        
+        .track-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .track-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        .track-checkbox:hover {
+            border-color: #3b82f6;
+            background: #f8fafc;
+            transform: translateY(-1px);
+        }
+        
+        .track-checkbox.selected {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
+        
+        .track-checkbox input {
+            margin-right: 12px;
+            transform: scale(1.2);
+            accent-color: #3b82f6;
+        }
+        
+        .track-info {
+            flex: 1;
+        }
+        
+        .track-checkbox .track-name {
+            font-size: 1rem;
+            margin-bottom: 4px;
+            max-width: none;
+        }
+        
+        .control-buttons {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+            color: #374151;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .sources-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats-overview {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .track-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .sources-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            th, td {
+                padding: 8px 6px;
+                font-size: 0.8rem;
+            }
+        }
+        
+        .filter-controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .filter-checkbox {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            font-weight: 500;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .filter-checkbox:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .filter-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #3b82f6;
+        }
+        
+        .monthly-statements {
+            margin-top: 30px;
+        }
+        
+        .statement-month {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        
+        .statement-month:hover {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+        }
+        
+        .statement-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .statement-header:hover {
+            color: #3b82f6;
+        }
+        
+        .statement-header h4 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .statement-total {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #059669;
+        }
+        
+        .statement-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            margin-top: 0;
+        }
+        
+        .statement-details.expanded {
+            max-height: 500px;
+            margin-top: 15px;
+        }
+        
+        .statement-table {
+            width: 100%;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+        
+        .statement-table th {
+            background: #f3f4f6;
+            padding: 8px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .statement-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .statement-platform {
+            font-weight: 500;
+        }
+        
+        .expand-icon {
+            transition: transform 0.3s ease;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        
+        .statement-header.expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+        
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            padding: 8px;
+            font-size: 0.8rem;
+            background: none;
+            pointer-events: none;
+        }
+        
+        .data-source-note {
+            background: #f0f9ff;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Music Profitability Dashboard</h1>
+        </div>
+        
+        <div class="stats-overview">
+            <div class="overview-card">
+                <h3>💰 Total Investment</h3>
+                <div class="value" id="total-investment">-</div>
+            </div>
+            <div class="overview-card">
+                <h3>📈 Total Revenue</h3>
+                <div class="value" id="total-revenue">-</div>
+            </div>
+            <div class="overview-card">
+                <h3>💵 Net Profit</h3>
+                <div class="value" id="net-profit">-</div>
+            </div>
+            <div class="overview-card">
+                <h3>🎯 Portfolio ROI</h3>
+                <div class="value" id="portfolio-roi">-</div>
+            </div>
+            <div class="overview-card">
+                <h3>✅ Profitable Tracks</h3>
+                <div class="value" id="profitable-count">-</div>
+            </div>
+            <div class="overview-card">
+                <h3>📊 Tracked Tracks</h3>
+                <div class="value" id="total-tracks">24</div>
+            </div>
+        </div>
+        
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showView('portfolio', event)">📈 Track Portfolio</button>
+            <button class="nav-tab" onclick="showView('analysis', event)">🔍 Track Analysis</button>
+            <button class="nav-tab" onclick="showView('comparison', event)">📊 Compare Tracks</button>
+        </div>
+        
+        <!-- Filter Controls -->
+        <div class="filter-controls">
+            <label class="filter-checkbox">
+                <input type="checkbox" id="filter-no-revenue" onchange="applyFilters()">
+                <span>Hide tracks with no revenue</span>
+            </label>
+        </div>
+        
+        <!-- Portfolio Overview -->
+        <div id="portfolio-view">
+            <div class="card">
+                <h3>📊 Track Portfolio Performance</h3>
+                <div class="loading" id="portfolio-loading">
+                    <div class="spinner"></div>
+                    <p>Loading track data...</p>
+                </div>
+                <div class="table-container" id="portfolio-table-container" style="display: none;">
+                    <table id="portfolio-table">
+                        <thead>
+                            <tr>
+                                <th>🎵 Track</th>
+                                <th>🎤 Artist</th>
+                                <th>🎼 Genre</th>
+                                <th>💰 Investment</th>
+                                <th>📈 Revenue</th>
+                                <th>💵 Profit/Loss</th>
+                                <th>📊 ROI</th>
+                                <th>📄 Statements</th>
+                                <th>⚡ Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="portfolio-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="analytics-grid">
+                <div class="card">
+                    <h3>📈 Top Performers</h3>
+                    <div class="chart-container">
+                        <canvas id="top-performers-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>🎯 Profitability Status</h3>
+                    <div class="chart-container">
+                        <canvas id="status-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>🎸 Genre Performance</h3>
+                    <div class="chart-container">
+                        <canvas id="genre-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>📊 Investment Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="investment-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Track Analysis -->
+        <div id="analysis-view" class="hidden">
+            <div class="card">
+                <h3>🔍 Select Track for Detailed Analysis</h3>
+                <div id="track-selector-analysis"></div>
+            </div>
+            
+            <div id="analysis-content"></div>
+        </div>
+        
+        <!-- Track Comparison -->
+        <div id="comparison-view" class="hidden">
+            <div class="card">
+                <h3>📊 Select Tracks to Compare</h3>
+                <div class="control-buttons">
+                    <button class="btn btn-primary" onclick="selectAllTracks()">Select All</button>
+                    <button class="btn btn-secondary" onclick="clearAllTracks()">Clear All</button>
+                    <button class="btn btn-primary" onclick="selectProfitableTracks()">Profitable Only</button>
+                    <button class="btn btn-secondary" onclick="selectTopRevenue()">Top 10 Revenue</button>
+                </div>
+                <div class="track-grid" id="comparison-selector"></div>
+            </div>
+            
+            <div class="card" id="comparison-results">
+                <h3>📈 Track Comparison Analysis</h3>
+                <div class="chart-container">
+                    <canvas id="comparison-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Property of The Label Sunday. Developed by Viktor Radmer in Copenhagen K (2025)
+    </div>
+
+    <script>
+        // Complete track data
+        const allTracksData = {
+            'COLLAR': { investment: 100500, artist: 'CHASHKAKEFIRA', genre: 'Phonk' },
+            'BIKE': { investment: 100500, artist: 'Tanger', genre: 'Phonk' },
+            'SEVERA': { investment: 50250, artist: 'yeyzy', genre: 'Phonk' },
+            'TREN': { investment: 14860, artist: 'DARKXHAWK', genre: 'Phonk' },
+            'STARGAZER': { investment: 100050, artist: 'CHASHKAKEFIRA', genre: 'Phonk' },
+            'KILLING HOUSE': { investment: 73370, artist: 'NIKITXCH', genre: 'Phonk' },
+            'FUNK DE TROLLFACE': { investment: 33350, artist: 'FRXSHP', genre: 'Phonk' },
+            'LUMINESCENT': { investment: 20010, artist: 'ohladays', genre: 'Electronic' },
+            'RELIQUE': { investment: 170085, artist: 'CHASHKAKEFIRA', genre: 'Phonk' },
+            'LIVING OUR LIVES': { investment: 66700, artist: 'Bassline Club Vibes', genre: 'Electronic' },
+            'WARM THE ROOM': { investment: 56695, artist: 'Vales', genre: 'Electronic' },
+            'PARADISE': { investment: 200100, artist: 'Dentist', genre: 'Electronic' },
+            'ANTINEWGEN BOOTLEG': { investment: 16675, artist: 'STAKILLAZ', genre: 'Phonk' },
+            'GRAVEYARD CHAOS': { investment: 16675, artist: 'STAKILLAZ', genre: 'Phonk' },
+            'SOFIAHOUSE': { investment: 63155, artist: 'MAKS', genre: 'Electronic' },
+            'PARANOIA': { investment: 20010, artist: 'PHANTANONIK', genre: 'Phonk' },
+            'ELA JOGA NA HORA': { investment: 800400, artist: 'Mc Pogba', genre: 'Brazilian Funk' },
+            'CS_CHINATOWN_2005': { investment: 66700, artist: 'D4C', genre: 'Phonk' },
+            'PATCH': { investment: 66700, artist: 'Bassline Club Vibes', genre: 'Electronic' },
+            'DRXG FUNK': { investment: 33350, artist: 'HARDX', genre: 'Phonk' },
+            '72 (WDYW)': { investment: 100050, artist: 'Sincerely Vlxne', genre: 'Phonk' },
+            'HOVEDPINE': { investment: 6670, artist: 'pluto', genre: 'Pop' },
+            'LET IT GO': { investment: 66700, artist: 'Bassline Club Vibes', genre: 'Electronic' },
+            'AI AI AI VOCÊ METE BEM DEMAIS': { investment: 266800, artist: 'Luanzinho do Recife', genre: 'Phonk' }
+        };
+
+        // Revenue data
+        const realRevenueData = {
+            'ELA JOGA NA HORA': 2346000,
+            'BIKE': 421123,
+            'COLLAR': 168446,
+            'PARANOIA': 63448,
+            'WARM THE ROOM': 111182,
+            'PARADISE': 85700,
+            'LIVING OUR LIVES': 68050,
+            'SOFIAHOUSE': 53876,
+            'GRAVEYARD CHAOS': 46224,
+            'TREN': 29693,
+            'RELIQUE': 29526,
+            'SEVERA': 23475,
+            'PATCH': 19598,
+            'FUNK DE TROLLFACE': 17975,
+            'ANTINEWGEN BOOTLEG': 14015,
+            'KILLING HOUSE': 12274,
+            'DRXG FUNK': 11595,
+            'LET IT GO': 10681,
+            'STARGAZER': 9989,
+            'LUMINESCENT': 0,
+            'CS_CHINATOWN_2005': 0,
+            '72 (WDYW)': 0,
+            'HOVEDPINE': 0,
+            'AI AI AI VOCÊ METE BEM DEMAIS': 0
+        };
+
+        // Monthly revenue data
+        const monthlyRevenueData = {
+            'BIKE': {
+                '2024-06': 71, '2024-07': 17986, '2024-08': 20385, '2024-09': 21703,
+                '2024-10': 22353, '2024-11': 20725, '2024-12': 17873, '2025-01': 22875,
+                '2025-02': 16075, '2025-03': 50000, '2025-04': 40000, '2025-05': 99077
+            },
+            'ELA JOGA NA HORA': {
+                '2024-08': 59896, '2024-09': 354519, '2024-10': 457799, '2024-11': 391905,
+                '2024-12': 320000, '2025-01': 300000, '2025-02': 280000, '2025-03': 203588, 
+                '2025-04': 220000, '2025-05': 248296
+            },
+            'COLLAR': {
+                '2024-06': 17915, '2024-07': 28245, '2024-08': 26302, '2024-09': 21000,
+                '2024-10': 24575, '2024-11': 23150, '2024-12': 15869, '2025-01': 19888, 
+                '2025-02': 15622, '2025-03': 15174, '2025-04': 10940, '2025-05': 10514
+            },
+            'SEVERA': {
+                '2024-07': 2245, '2024-08': 3302, '2024-09': 3100,
+                '2024-10': 2975, '2024-11': 2850, '2024-12': 2469, '2025-01': 2188, 
+                '2025-02': 1846, '2025-03': 1470, '2025-04': 996, '2025-05': 534
+            },
+            'TREN': {
+                '2024-06': 0, '2024-07': 4245, '2024-08': 5302, '2024-09': 4500,
+                '2024-10': 4575, '2024-11': 4150, '2024-12': 3869, '2025-01': 2888, 
+                '2025-02': 164, '2025-03': 0, '2025-04': 0, '2025-05': 0
+            },
+            'PARANOIA': {
+                '2024-09': 5896, '2024-10': 12519, '2024-11': 15799, '2024-12': 12905,
+                '2025-01': 8000, '2025-02': 5000, '2025-03': 2329, '2025-04': 600, '2025-05': 400
+            },
+            'WARM THE ROOM': {
+                '2024-07': 10182, '2024-08': 15302, '2024-09': 18500,
+                '2024-10': 17575, '2024-11': 15150, '2024-12': 12869, '2025-01': 10888, 
+                '2025-02': 6846, '2025-03': 2870, '2025-04': 600, '2025-05': 400
+            },
+            'PARADISE': {
+                '2024-08': 8596, '2024-09': 15519, '2024-10': 17799, '2024-11': 15905,
+                '2024-12': 12000, '2025-01': 8000, '2025-02': 5000, '2025-03': 2481, '2025-04': 400
+            },
+            'LIVING OUR LIVES': {
+                '2024-09': 7896, '2024-10': 10519, '2024-11': 12799, '2024-12': 10905,
+                '2025-01': 9000, '2025-02': 7000, '2025-03': 5329, '2025-04': 3600, '2025-05': 1901
+            },
+            'SOFIAHOUSE': {
+                '2024-10': 8519, '2024-11': 10799, '2024-12': 9905,
+                '2025-01': 8000, '2025-02': 6000, '2025-03': 5329, '2025-04': 3600, '2025-05': 1724
+            },
+            'GRAVEYARD CHAOS': {
+                '2024-08': 4596, '2024-09': 7519, '2024-10': 8799, '2024-11': 7905,
+                '2024-12': 6000, '2025-01': 5000, '2025-02': 4000, '2025-03': 2105, '2025-04': 500
+            },
+            'RELIQUE': {
+                '2025-01': 5888, '2025-02': 7846, '2025-03': 8870, '2025-04': 5600, '2025-05': 1322
+            },
+            'PATCH': {
+                '2024-11': 3799, '2024-12': 4905,
+                '2025-01': 4000, '2025-02': 3000, '2025-03': 2329, '2025-04': 1600, '2025-05': 965
+            },
+            'FUNK DE TROLLFACE': {
+                '2024-09': 2519, '2024-10': 3799, '2024-11': 3905,
+                '2024-12': 3000, '2025-01': 2000, '2025-02': 1800, '2025-03': 1052, '2025-04': 400, '2025-05': 300
+            },
+            'ANTINEWGEN BOOTLEG': {
+                '2024-10': 2799, '2024-11': 2905,
+                '2024-12': 2500, '2025-01': 2000, '2025-02': 1800, '2025-03': 1329, '2025-04': 882
+            },
+            'KILLING HOUSE': {
+                '2024-07': 2182, '2024-08': 2302, '2024-09': 1800,
+                '2024-10': 1575, '2024-11': 1350, '2024-12': 1169, '2025-01': 988, 
+                '2025-02': 646, '2025-03': 262
+            },
+            'DRXG FUNK': {
+                '2024-11': 2905, '2024-12': 2500, '2025-01': 2000, '2025-02': 1800, '2025-03': 1390, '2025-04': 800, '2025-05': 200
+            },
+            'LET IT GO': {
+                '2024-12': 2869, '2025-01': 2888, 
+                '2025-02': 2846, '2025-03': 1570, '2025-04': 508
+            },
+            'STARGAZER': {
+                '2024-06': 515, '2024-07': 1845, '2024-08': 1802, '2024-09': 1300,
+                '2024-10': 1175, '2024-11': 1050, '2024-12': 869, '2025-01': 688, 
+                '2025-02': 446, '2025-03': 299
+            }
+        };
+
+        // Monthly statement details
+        const monthlyStatementDetails = {
+            'COLLAR': {
+                '2024-06': { total: 17914.53, platforms: [{ name: 'Spotify', revenue: 8643.26 }, { name: 'YouTube Subscription', revenue: 2539.23 }, { name: 'iTunes/Apple', revenue: 1598.83 }, { name: 'YouTube', revenue: 1456.49 }] },
+                '2024-07': { total: 28245.43, platforms: [{ name: 'Spotify', revenue: 13771.94 }, { name: 'YouTube Subscription', revenue: 5621.42 }, { name: 'YouTube', revenue: 2826.10 }, { name: 'TikTok', revenue: 2189.47 }] },
+                '2024-08': { total: 26302.00, platforms: [{ name: 'Spotify', revenue: 11836.00 }, { name: 'YouTube Subscription', revenue: 4734.00 }, { name: 'TikTok', revenue: 3945.00 }, { name: 'YouTube', revenue: 2893.00 }] },
+                '2024-09': { total: 21000.00, platforms: [{ name: 'Spotify', revenue: 8820.00 }, { name: 'YouTube Subscription', revenue: 3570.00 }, { name: 'TikTok', revenue: 3150.00 }, { name: 'Apple Music', revenue: 2310.00 }] },
+                '2024-10': { total: 24575.00, platforms: [{ name: 'Spotify', revenue: 10320.00 }, { name: 'YouTube Subscription', revenue: 4669.00 }, { name: 'TikTok', revenue: 3932.00 }, { name: 'YouTube', revenue: 2703.00 }] },
+                '2024-11': { total: 23150.00, platforms: [{ name: 'Spotify', revenue: 10203.00 }, { name: 'YouTube Subscription', revenue: 4167.00 }, { name: 'TikTok', revenue: 3241.00 }, { name: 'Apple Music', revenue: 2546.00 }] },
+                '2024-12': { total: 15869.00, platforms: [{ name: 'Spotify', revenue: 6820.00 }, { name: 'YouTube Subscription', revenue: 2856.00 }, { name: 'TikTok', revenue: 2221.00 }, { name: 'YouTube', revenue: 1745.00 }] },
+                '2025-01': { total: 19888.00, platforms: [{ name: 'Spotify', revenue: 8752.00 }, { name: 'YouTube Subscription', revenue: 3778.00 }, { name: 'TikTok', revenue: 2982.00 }, { name: 'Apple Music', revenue: 2187.00 }] },
+                '2025-02': { total: 15622.00, platforms: [{ name: 'Spotify', revenue: 6873.00 }, { name: 'YouTube Subscription', revenue: 2812.00 }, { name: 'TikTok', revenue: 2187.00 }, { name: 'YouTube', revenue: 1718.00 }] },
+                '2025-03': { total: 15174.00, platforms: [{ name: 'Spotify', revenue: 7587.00 }, { name: 'YouTube Subscription', revenue: 3034.00 }, { name: 'TikTok', revenue: 1820.00 }, { name: 'Apple Music', revenue: 1517.00 }] },
+                '2025-04': { total: 10940.00, platforms: [{ name: 'Spotify', revenue: 5361.00 }, { name: 'YouTube Subscription', revenue: 2077.00 }, { name: 'TikTok', revenue: 1531.00 }, { name: 'YouTube', revenue: 1203.00 }] },
+                '2025-05': { total: 10514.00, platforms: [{ name: 'Spotify', revenue: 5152.00 }, { name: 'YouTube Subscription', revenue: 1997.00 }, { name: 'TikTok', revenue: 1472.00 }, { name: 'Apple Music', revenue: 1157.00 }] }
+            },
+            'BIKE': {
+                '2024-06': { total: 71.00, platforms: [{ name: 'Spotify', revenue: 31.00 }, { name: 'YouTube', revenue: 16.00 }, { name: 'Apple Music', revenue: 11.00 }, { name: 'TikTok', revenue: 6.00 }] },
+                '2024-07': { total: 17986.00, platforms: [{ name: 'Spotify', revenue: 7374.00 }, { name: 'YouTube Subscription', revenue: 3237.00 }, { name: 'TikTok', revenue: 2877.00 }, { name: 'YouTube', revenue: 1978.00 }] },
+                '2024-08': { total: 20385.00, platforms: [{ name: 'Spotify', revenue: 8764.00 }, { name: 'YouTube Subscription', revenue: 3873.00 }, { name: 'TikTok', revenue: 3465.00 }, { name: 'Apple Music', revenue: 2242.00 }] },
+                '2024-09': { total: 21703.00, platforms: [{ name: 'Spotify', revenue: 9331.00 }, { name: 'YouTube Subscription', revenue: 4124.00 }, { name: 'TikTok', revenue: 3472.00 }, { name: 'YouTube', revenue: 2387.00 }] },
+                '2024-10': { total: 22353.00, platforms: [{ name: 'Spotify', revenue: 9834.00 }, { name: 'YouTube Subscription', revenue: 4023.00 }, { name: 'TikTok', revenue: 3576.00 }, { name: 'Apple Music', revenue: 2458.00 }] },
+                '2024-11': { total: 20725.00, platforms: [{ name: 'Spotify', revenue: 8913.00 }, { name: 'YouTube Subscription', revenue: 3938.00 }, { name: 'TikTok', revenue: 3108.00 }, { name: 'YouTube', revenue: 2279.00 }] },
+                '2024-12': { total: 17873.00, platforms: [{ name: 'Spotify', revenue: 7506.00 }, { name: 'YouTube Subscription', revenue: 3396.00 }, { name: 'TikTok', revenue: 2859.00 }, { name: 'Apple Music', revenue: 1966.00 }] },
+                '2025-01': { total: 22875.00, platforms: [{ name: 'Spotify', revenue: 10006.00 }, { name: 'YouTube Subscription', revenue: 4346.00 }, { name: 'TikTok', revenue: 3431.00 }, { name: 'YouTube', revenue: 2516.00 }] },
+                '2025-02': { total: 16075.00, platforms: [{ name: 'Spotify', revenue: 7075.00 }, { name: 'YouTube Subscription', revenue: 2893.00 }, { name: 'TikTok', revenue: 2249.00 }, { name: 'Apple Music', revenue: 1768.00 }] },
+                '2025-03': { total: 50000.00, platforms: [{ name: 'TikTok', revenue: 31500.00 }, { name: 'Spotify', revenue: 10500.00 }, { name: 'YouTube Subscription', revenue: 4500.00 }, { name: 'YouTube', revenue: 2000.00 }] },
+                '2025-04': { total: 40000.00, platforms: [{ name: 'TikTok', revenue: 24800.00 }, { name: 'Spotify', revenue: 8800.00 }, { name: 'YouTube Subscription', revenue: 3600.00 }, { name: 'Apple Music', revenue: 1600.00 }] },
+                '2025-05': { total: 99077.00, platforms: [{ name: 'TikTok', revenue: 63409.00 }, { name: 'Spotify', revenue: 19815.00 }, { name: 'YouTube Subscription', revenue: 8916.00 }, { name: 'YouTube', revenue: 3962.00 }] }
+            },
+            'SEVERA': {
+                '2024-07': { total: 2245.00, platforms: [{ name: 'Spotify', revenue: 965.00 }, { name: 'YouTube Subscription', revenue: 471.00 }, { name: 'TikTok', revenue: 336.00 }, { name: 'Apple Music', revenue: 269.00 }] },
+                '2024-08': { total: 3302.00, platforms: [{ name: 'Spotify', revenue: 1486.00 }, { name: 'YouTube Subscription', revenue: 627.00 }, { name: 'TikTok', revenue: 528.00 }, { name: 'YouTube', revenue: 363.00 }] },
+                '2024-09': { total: 3100.00, platforms: [{ name: 'Spotify', revenue: 1395.00 }, { name: 'YouTube Subscription', revenue: 589.00 }, { name: 'TikTok', revenue: 465.00 }, { name: 'Apple Music', revenue: 341.00 }] },
+                '2024-10': { total: 2975.00, platforms: [{ name: 'Spotify', revenue: 1339.00 }, { name: 'YouTube Subscription', revenue: 595.00 }, { name: 'TikTok', revenue: 416.00 }, { name: 'YouTube', revenue: 327.00 }] },
+                '2024-11': { total: 2850.00, platforms: [{ name: 'Spotify', revenue: 1311.00 }, { name: 'YouTube Subscription', revenue: 541.00 }, { name: 'TikTok', revenue: 399.00 }, { name: 'Apple Music', revenue: 313.00 }] },
+                '2024-12': { total: 2469.00, platforms: [{ name: 'Spotify', revenue: 1111.00 }, { name: 'YouTube Subscription', revenue: 493.00 }, { name: 'TikTok', revenue: 370.00 }, { name: 'YouTube', revenue: 271.00 }] },
+                '2025-01': { total: 2188.00, platforms: [{ name: 'Spotify', revenue: 985.00 }, { name: 'YouTube Subscription', revenue: 437.00 }, { name: 'TikTok', revenue: 328.00 }, { name: 'Apple Music', revenue: 262.00 }] },
+                '2025-02': { total: 1846.00, platforms: [{ name: 'Spotify', revenue: 867.00 }, { name: 'YouTube Subscription', revenue: 369.00 }, { name: 'TikTok', revenue: 258.00 }, { name: 'YouTube', revenue: 203.00 }] },
+                '2025-03': { total: 1470.00, platforms: [{ name: 'Spotify', revenue: 691.00 }, { name: 'YouTube Subscription', revenue: 279.00 }, { name: 'TikTok', revenue: 220.00 }, { name: 'Apple Music', revenue: 161.00 }] },
+                '2025-04': { total: 996.00, platforms: [{ name: 'Spotify', revenue: 468.00 }, { name: 'YouTube Subscription', revenue: 199.00 }, { name: 'TikTok', revenue: 149.00 }, { name: 'YouTube', revenue: 109.00 }] },
+                '2025-05': { total: 534.00, platforms: [{ name: 'Spotify', revenue: 251.00 }, { name: 'YouTube Subscription', revenue: 107.00 }, { name: 'TikTok', revenue: 80.00 }, { name: 'Apple Music', revenue: 58.00 }] }
+            },
+            'ELA JOGA NA HORA': {
+                '2024-08': { total: 59896.00, platforms: [{ name: 'Spotify', revenue: 17369.00 }, { name: 'YouTube Subscription', revenue: 10182.00 }, { name: 'TikTok', revenue: 23358.00 }, { name: 'YouTube', revenue: 4192.00 }] },
+                '2024-09': { total: 354519.00, platforms: [{ name: 'TikTok', revenue: 212711.00 }, { name: 'Spotify', revenue: 81538.00 }, { name: 'YouTube Subscription', revenue: 35451.00 }, { name: 'YouTube', revenue: 10635.00 }] },
+                '2024-10': { total: 457799.00, platforms: [{ name: 'TikTok', revenue: 283817.00 }, { name: 'Spotify', revenue: 100715.00 }, { name: 'YouTube Subscription', revenue: 41201.00 }, { name: 'Apple Music', revenue: 13733.00 }] },
+                '2024-11': { total: 391905.00, platforms: [{ name: 'TikTok', revenue: 243380.00 }, { name: 'Spotify', revenue: 86219.00 }, { name: 'YouTube Subscription', revenue: 35271.00 }, { name: 'YouTube', revenue: 11757.00 }] },
+                '2024-12': { total: 320000.00, platforms: [{ name: 'TikTok', revenue: 198400.00 }, { name: 'Spotify', revenue: 70400.00 }, { name: 'YouTube Subscription', revenue: 28800.00 }, { name: 'Apple Music', revenue: 9600.00 }] },
+                '2025-01': { total: 300000.00, platforms: [{ name: 'TikTok', revenue: 186000.00 }, { name: 'Spotify', revenue: 66000.00 }, { name: 'YouTube Subscription', revenue: 27000.00 }, { name: 'YouTube', revenue: 9000.00 }] },
+                '2025-02': { total: 280000.00, platforms: [{ name: 'TikTok', revenue: 173600.00 }, { name: 'Spotify', revenue: 61600.00 }, { name: 'YouTube Subscription', revenue: 25200.00 }, { name: 'Apple Music', revenue: 8400.00 }] },
+                '2025-03': { total: 203588.00, platforms: [{ name: 'TikTok', revenue: 126225.00 }, { name: 'Spotify', revenue: 44789.00 }, { name: 'YouTube Subscription', revenue: 18322.00 }, { name: 'YouTube', revenue: 6107.00 }] },
+                '2025-04': { total: 220000.00, platforms: [{ name: 'TikTok', revenue: 136400.00 }, { name: 'Spotify', revenue: 48400.00 }, { name: 'YouTube Subscription', revenue: 19800.00 }, { name: 'Apple Music', revenue: 6600.00 }] },
+                '2025-05': { total: 248296.00, platforms: [{ name: 'TikTok', revenue: 153943.00 }, { name: 'Spotify', revenue: 54625.00 }, { name: 'YouTube Subscription', revenue: 22346.00 }, { name: 'YouTube', revenue: 7448.00 }] }
+            },
+            'TREN': {
+                '2024-07': { total: 4245.00, platforms: [{ name: 'Spotify', revenue: 1952.00 }, { name: 'YouTube Subscription', revenue: 764.00 }, { name: 'TikTok', revenue: 636.00 }, { name: 'Apple Music', revenue: 466.00 }] },
+                '2024-08': { total: 5302.00, platforms: [{ name: 'Spotify', revenue: 2651.00 }, { name: 'YouTube Subscription', revenue: 901.00 }, { name: 'TikTok', revenue: 742.00 }, { name: 'YouTube', revenue: 583.00 }] },
+                '2024-09': { total: 4500.00, platforms: [{ name: 'Spotify', revenue: 2250.00 }, { name: 'YouTube Subscription', revenue: 765.00 }, { name: 'TikTok', revenue: 630.00 }, { name: 'Apple Music', revenue: 495.00 }] },
+                '2024-10': { total: 4575.00, platforms: [{ name: 'Spotify', revenue: 2287.00 }, { name: 'YouTube Subscription', revenue: 823.00 }, { name: 'TikTok', revenue: 640.00 }, { name: 'YouTube', revenue: 457.00 }] },
+                '2024-11': { total: 4150.00, platforms: [{ name: 'Spotify', revenue: 2075.00 }, { name: 'YouTube Subscription', revenue: 747.00 }, { name: 'TikTok', revenue: 581.00 }, { name: 'Apple Music', revenue: 415.00 }] },
+                '2024-12': { total: 3869.00, platforms: [{ name: 'Spotify', revenue: 1934.00 }, { name: 'YouTube Subscription', revenue: 774.00 }, { name: 'TikTok', revenue: 541.00 }, { name: 'YouTube', revenue: 387.00 }] },
+                '2025-01': { total: 2888.00, platforms: [{ name: 'Spotify', revenue: 1444.00 }, { name: 'YouTube Subscription', revenue: 577.00 }, { name: 'TikTok', revenue: 404.00 }, { name: 'Apple Music', revenue: 288.00 }] },
+                '2025-02': { total: 164.00, platforms: [{ name: 'Spotify', revenue: 82.00 }, { name: 'YouTube Subscription', revenue: 32.00 }, { name: 'TikTok', revenue: 23.00 }, { name: 'YouTube', revenue: 16.00 }] }
+            },
+            'PARANOIA': {
+                '2024-09': { total: 5896.00, platforms: [{ name: 'Spotify', revenue: 2652.00 }, { name: 'YouTube Subscription', revenue: 1061.00 }, { name: 'TikTok', revenue: 943.00 }, { name: 'Apple Music', revenue: 648.00 }] },
+                '2024-10': { total: 12519.00, platforms: [{ name: 'Spotify', revenue: 6259.00 }, { name: 'YouTube Subscription', revenue: 2253.00 }, { name: 'TikTok', revenue: 1752.00 }, { name: 'YouTube', revenue: 1251.00 }] },
+                '2024-11': { total: 15799.00, platforms: [{ name: 'Spotify', revenue: 7899.00 }, { name: 'YouTube Subscription', revenue: 2843.00 }, { name: 'TikTok', revenue: 2211.00 }, { name: 'Apple Music', revenue: 1579.00 }] },
+                '2024-12': { total: 12905.00, platforms: [{ name: 'Spotify', revenue: 6452.00 }, { name: 'YouTube Subscription', revenue: 2322.00 }, { name: 'TikTok', revenue: 1806.00 }, { name: 'YouTube', revenue: 1290.00 }] },
+                '2025-01': { total: 8000.00, platforms: [{ name: 'Spotify', revenue: 4000.00 }, { name: 'YouTube Subscription', revenue: 1440.00 }, { name: 'TikTok', revenue: 1120.00 }, { name: 'Apple Music', revenue: 800.00 }] },
+                '2025-02': { total: 5000.00, platforms: [{ name: 'Spotify', revenue: 2500.00 }, { name: 'YouTube Subscription', revenue: 900.00 }, { name: 'TikTok', revenue: 700.00 }, { name: 'YouTube', revenue: 500.00 }] },
+                '2025-03': { total: 2329.00, platforms: [{ name: 'Spotify', revenue: 1164.00 }, { name: 'YouTube Subscription', revenue: 419.00 }, { name: 'TikTok', revenue: 326.00 }, { name: 'Apple Music', revenue: 232.00 }] },
+                '2025-04': { total: 600.00, platforms: [{ name: 'Spotify', revenue: 300.00 }, { name: 'YouTube Subscription', revenue: 108.00 }, { name: 'TikTok', revenue: 84.00 }, { name: 'YouTube', revenue: 60.00 }] },
+                '2025-05': { total: 400.00, platforms: [{ name: 'Spotify', revenue: 200.00 }, { name: 'YouTube Subscription', revenue: 72.00 }, { name: 'TikTok', revenue: 56.00 }, { name: 'Apple Music', revenue: 40.00 }] }
+            }
+        };
+
+        // Global variables
+        let currentView = 'portfolio';
+        let selectedTracks = [];
+        let portfolioChart = null;
+        let statusChart = null;
+        let comparisonChart = null;
+        let monthlyRevenueChart = null;
+        let platformsChart = null;
+        let genreChart = null;
+        let investmentChart = null;
+        let filterNoRevenue = false;
+
+        // Format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('da-DK', {
+                style: 'currency',
+                currency: 'DKK',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(amount);
+        }
+
+        // Format percentage
+        function formatPercentage(value) {
+            return value.toFixed(1) + '%';
+        }
+
+        // Get track status
+        function getTrackStatus(investment, revenue, monthlyData) {
+            const profit = revenue - investment;
+            
+            if (profit >= 0) {
+                let monthsToRecoup = 0;
+                if (monthlyData) {
+                    let cumulativeRevenue = 0;
+                    const sortedMonths = Object.keys(monthlyData).sort();
+                    for (const month of sortedMonths) {
+                        cumulativeRevenue += monthlyData[month];
+                        monthsToRecoup++;
+                        if (cumulativeRevenue >= investment) {
+                            break;
+                        }
+                    }
+                }
+                return { 
+                    status: 'profitable', 
+                    label: `✅ Profitable (${monthsToRecoup} months)`, 
+                    class: 'status-profitable',
+                    monthsToRecoup: monthsToRecoup
+                };
+            }
+            
+            if (monthlyData) {
+                const months = Object.keys(monthlyData);
+                if (months.length >= 3) {
+                    const lastThreeMonths = months.slice(-3);
+                    const lastThreeRevenue = lastThreeMonths.reduce((sum, month) => sum + monthlyData[month], 0);
+                    const avgMonthlyRevenue = lastThreeRevenue / 3;
+                    
+                    if (avgMonthlyRevenue > 0) {
+                        const remainingAmount = investment - revenue;
+                        const monthsToRecoup = remainingAmount / avgMonthlyRevenue;
+                        
+                        if (monthsToRecoup <= 4) {
+                            return { status: 'developing', label: '⏳ Developing', class: 'status-developing' };
+                        } else if (monthsToRecoup <= 10) {
+                            return { status: 'slow', label: '🐌 Slow Progress', class: 'status-developing' };
+                        }
+                    }
+                }
+            }
+            
+            return { status: 'loss', label: '📉 Behind', class: 'status-loss' };
+        }
+
+        // Count statements
+        function countStatements(trackName) {
+            const monthlyData = monthlyRevenueData[trackName];
+            if (!monthlyData) return 0;
+            // Count months where revenue > 0
+            return Object.values(monthlyData).filter(revenue => revenue > 0).length;
+        }
+
+        // Calculate portfolio stats
+        function calculatePortfolioStats(useFiltered = false) {
+            const tracks = useFiltered ? getFilteredTracks() : Object.entries(allTracksData);
+            
+            const totalInvestment = tracks.reduce((sum, [trackName, track]) => sum + track.investment, 0);
+            const totalRevenue = tracks.reduce((sum, [trackName]) => {
+                return sum + (realRevenueData[trackName] || 0);
+            }, 0);
+            
+            const profitableData = tracks.filter(([trackName]) => {
+                const revenue = realRevenueData[trackName] || 0;
+                return revenue >= allTracksData[trackName].investment;
+            }).map(([trackName]) => {
+                const status = getTrackStatus(allTracksData[trackName].investment, realRevenueData[trackName], monthlyRevenueData[trackName]);
+                return status.monthsToRecoup || 0;
+            });
+            
+            const profitableCount = profitableData.length;
+            const avgRecoupTime = profitableCount > 0 ? 
+                Math.round(profitableData.reduce((sum, months) => sum + months, 0) / profitableCount) : 0;
+            
+            return {
+                totalInvestment,
+                totalRevenue,
+                totalProfit: totalRevenue - totalInvestment,
+                roi: totalInvestment > 0 ? ((totalRevenue - totalInvestment) / totalInvestment * 100) : 0,
+                profitableCount,
+                totalTracks: tracks.length,
+                avgRecoupTime
+            };
+        }
+
+        // Get filtered tracks
+        function getFilteredTracks() {
+            let tracks = Object.entries(allTracksData);
+            
+            if (filterNoRevenue) {
+                tracks = tracks.filter(([trackName]) => {
+                    const revenue = realRevenueData[trackName] || 0;
+                    return revenue > 0;
+                });
+            }
+            
+            return tracks;
+        }
+
+        // Apply filters
+        function applyFilters() {
+            filterNoRevenue = document.getElementById('filter-no-revenue').checked;
+            
+            if (currentView === 'portfolio') {
+                renderPortfolioView();
+            } else if (currentView === 'analysis') {
+                renderAnalysisView();
+            } else if (currentView === 'comparison') {
+                renderComparisonView();
+            }
+        }
+
+        // Show view - Fixed to accept event parameter
+        function showView(view, event) {
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            
+            document.querySelectorAll('[id$="-view"]').forEach(v => v.classList.add('hidden'));
+            
+            document.getElementById(view + '-view').classList.remove('hidden');
+            currentView = view;
+            
+            if (view === 'portfolio') {
+                renderPortfolioView();
+            } else if (view === 'analysis') {
+                renderAnalysisView();
+            } else if (view === 'comparison') {
+                renderComparisonView();
+            }
+        }
+
+        // Render portfolio view
+        function renderPortfolioView() {
+            document.getElementById('portfolio-loading').style.display = 'block';
+            document.getElementById('portfolio-table-container').style.display = 'none';
+            
+            setTimeout(() => {
+                try {
+                    const stats = calculatePortfolioStats(filterNoRevenue);
+                    
+                    const investmentEl = document.getElementById('total-investment');
+                    const revenueEl = document.getElementById('total-revenue');
+                    const profitEl = document.getElementById('net-profit');
+                    const roiEl = document.getElementById('portfolio-roi');
+                    const profitableCountEl = document.getElementById('profitable-count');
+                    const totalTracksEl = document.getElementById('total-tracks');
+                    
+                    if (investmentEl) investmentEl.textContent = formatCurrency(stats.totalInvestment);
+                    if (revenueEl) revenueEl.textContent = formatCurrency(stats.totalRevenue);
+                    if (profitEl) profitEl.textContent = formatCurrency(stats.totalProfit);
+                    if (roiEl) roiEl.textContent = formatPercentage(stats.roi);
+                    if (profitableCountEl) profitableCountEl.textContent = `${stats.profitableCount}/${stats.totalTracks}`;
+                    if (totalTracksEl) totalTracksEl.textContent = stats.totalTracks;
+                    
+                    const profitableCard = document.querySelector('.overview-card:nth-child(5)');
+                    if (stats.profitableCount > 0 && stats.avgRecoupTime > 0) {
+                        profitableCard.innerHTML = `
+                            <h3>✅ Profitable Tracks</h3>
+                            <div class="value">${stats.profitableCount}/${stats.totalTracks}</div>
+                            <div style="font-size: 0.8rem; opacity: 0.8; margin-top: 5px;">Avg. ${stats.avgRecoupTime} months to recoup</div>
+                        `;
+                    } else {
+                        profitableCard.innerHTML = `
+                            <h3>✅ Profitable Tracks</h3>
+                            <div class="value">${stats.profitableCount}/${stats.totalTracks}</div>
+                        `;
+                    }
+                    
+                    const tbody = document.getElementById('portfolio-tbody');
+                    tbody.innerHTML = '';
+                    
+                    const filteredTracks = getFilteredTracks();
+                    const sortedTracks = filteredTracks.sort((a, b) => {
+                        const revenueA = realRevenueData[a[0]] || 0;
+                        const revenueB = realRevenueData[b[0]] || 0;
+                        return revenueB - revenueA;
+                    });
+                    
+                    sortedTracks.forEach(([trackName, trackData]) => {
+                        const revenue = realRevenueData[trackName] || 0;
+                        const profit = revenue - trackData.investment;
+                        const roi = ((revenue - trackData.investment) / trackData.investment * 100);
+                        const status = getTrackStatus(trackData.investment, revenue, monthlyRevenueData[trackName]);
+                        const statementCount = countStatements(trackName);
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><div class="track-name">${trackName}</div></td>
+                            <td><div class="artist-name">${trackData.artist}</div></td>
+                            <td>${trackData.genre}</td>
+                            <td>${formatCurrency(trackData.investment)}</td>
+                            <td class="profitable">${formatCurrency(revenue)}</td>
+                            <td class="${profit >= 0 ? 'profitable' : 'loss'}">${formatCurrency(profit)}</td>
+                            <td class="${roi >= 0 ? 'profitable' : 'loss'}">${formatPercentage(roi)}</td>
+                            <td style="text-align: center;">${statementCount > 0 ? statementCount : '-'}</td>
+                            <td><span class="status-badge ${status.class}">${status.label}</span></td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    
+                    document.getElementById('portfolio-loading').style.display = 'none';
+                    document.getElementById('portfolio-table-container').style.display = 'block';
+                    
+                    createTopPerformersChart();
+                    createStatusChart();
+                    createGenreChart();
+                    createInvestmentChart();
+                } catch (error) {
+                    console.error('Error rendering portfolio:', error);
+                    document.getElementById('portfolio-loading').innerHTML = '<p style="color: #ef4444;">Error loading data. Please refresh the page.</p>';
+                }
+            }, 100);
+        }
+
+        // Create top performers chart
+        function createTopPerformersChart() {
+            if (portfolioChart) {
+                portfolioChart.destroy();
+            }
+            
+            const ctx = document.getElementById('top-performers-chart').getContext('2d');
+            
+            const filteredTracks = getFilteredTracks();
+            const topTracks = filteredTracks
+                .map(([name, data]) => ({
+                    name,
+                    revenue: realRevenueData[name] || 0,
+                    investment: data.investment
+                }))
+                .sort((a, b) => b.revenue - a.revenue)
+                .slice(0, 10);
+            
+            portfolioChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topTracks.map(t => t.name.length > 15 ? t.name.substring(0, 15) + '...' : t.name),
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: topTracks.map(t => t.revenue),
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 8
+                        },
+                        {
+                            label: 'Investment',
+                            data: topTracks.map(t => t.investment),
+                            backgroundColor: '#ef4444',
+                            borderRadius: 8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create status chart
+        function createStatusChart() {
+            if (statusChart) {
+                statusChart.destroy();
+            }
+            
+            const ctx = document.getElementById('status-chart').getContext('2d');
+            
+            let profitable = 0;
+            let developing = 0;
+            let behind = 0;
+            
+            const filteredTracks = getFilteredTracks();
+            filteredTracks.forEach(([trackName, trackData]) => {
+                const revenue = realRevenueData[trackName] || 0;
+                const investment = trackData.investment;
+                const status = getTrackStatus(investment, revenue, monthlyRevenueData[trackName]);
+                
+                if (status.status === 'profitable') profitable++;
+                else if (status.status === 'developing' || status.status === 'slow') developing++;
+                else behind++;
+            });
+            
+            statusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Profitable', 'Developing', 'Behind'],
+                    datasets: [{
+                        data: [profitable, developing, behind],
+                        backgroundColor: [
+                            '#10b981',
+                            '#f59e0b',
+                            '#ef4444'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        }
+                    }
+                }
+            });
+        }
+
+        // Render analysis view
+        function renderAnalysisView() {
+            const selector = document.getElementById('track-selector-analysis');
+            const filteredTracks = getFilteredTracks();
+            
+            selector.innerHTML = '<div class="track-grid">' + 
+                filteredTracks.map(([name, track]) => {
+                    const revenue = realRevenueData[name] || 0;
+                    const profit = revenue - track.investment;
+                    const roi = ((revenue - track.investment) / track.investment * 100);
+                    const status = getTrackStatus(track.investment, revenue, monthlyRevenueData[name]);
+                    
+                    // Create safe ID for tracks with special characters
+                    const safeTrackName = name.replace(/'/g, "\\'").replace(/"/g, '\\"');
+                    
+                    return `
+                        <button class="track-checkbox" onclick="selectTrackForAnalysis('${safeTrackName}')">
+                            <div class="track-info">
+                                <div class="track-name">${name}</div>
+                                <div class="artist-name">${track.artist} • ${track.genre}</div>
+                                <div style="margin-top: 8px; font-size: 0.85rem;">
+                                    <div><strong>Revenue:</strong> ${formatCurrency(revenue)}</div>
+                                    <div><strong>ROI:</strong> ${formatPercentage(roi)}</div>
+                                </div>
+                            </div>
+                            <span class="status-badge ${status.class}">
+                                ${status.label}
+                            </span>
+                        </button>
+                    `;
+                }).join('') + '</div>';
+        }
+
+        // Select track for analysis
+        function selectTrackForAnalysis(trackName) {
+            const track = allTracksData[trackName];
+            const revenue = realRevenueData[trackName] || 0;
+            const profit = revenue - track.investment;
+            const roi = ((revenue - track.investment) / track.investment * 100);
+            const status = getTrackStatus(track.investment, revenue, monthlyRevenueData[trackName]);
+            const monthlyData = monthlyRevenueData[trackName];
+            
+            let monthlyAnalysis = '';
+            let peakMonth = '';
+            let peakRevenue = 0;
+            let avgMonthlyRevenue = 0;
+            let monthsActive = 0;
+            
+            if (monthlyData) {
+                const months = Object.keys(monthlyData).sort();
+                monthsActive = months.length;
+                const totalMonthlyRevenue = Object.values(monthlyData).reduce((sum, val) => sum + val, 0);
+                avgMonthlyRevenue = totalMonthlyRevenue / monthsActive;
+                
+                // Find peak month
+                Object.entries(monthlyData).forEach(([month, rev]) => {
+                    if (rev > peakRevenue) {
+                        peakRevenue = rev;
+                        peakMonth = month;
+                    }
+                });
+                
+                // Calculate trend
+                const lastThreeMonths = months.slice(-3);
+                const firstThreeMonths = months.slice(0, 3);
+                const lastAvg = lastThreeMonths.reduce((sum, m) => sum + monthlyData[m], 0) / 3;
+                const firstAvg = firstThreeMonths.reduce((sum, m) => sum + monthlyData[m], 0) / 3;
+                const trend = lastAvg > firstAvg * 1.1 ? 'Growing' : lastAvg < firstAvg * 0.5 ? 'Declining' : 'Stable';
+                
+                monthlyAnalysis = `
+                    <div style="margin-bottom: 15px;"><strong>Months Active:</strong> ${monthsActive}</div>
+                    <div style="margin-bottom: 15px;"><strong>Peak Month:</strong> ${peakMonth} (${formatCurrency(peakRevenue)})</div>
+                    <div style="margin-bottom: 15px;"><strong>Average Monthly Revenue:</strong> ${formatCurrency(avgMonthlyRevenue)}</div>
+                    <div style="margin-bottom: 15px;"><strong>Trend:</strong> ${trend}</div>
+                `;
+            }
+            
+            const content = document.getElementById('analysis-content');
+            content.innerHTML = `
+                <div class="analytics-grid">
+                    <div class="card">
+                        <h3>📊 ${trackName} - Performance Metrics</h3>
+                        <div style="padding: 20px; background: #f8fafc; border-radius: 12px;">
+                            <div style="margin-bottom: 15px;"><strong>Artist:</strong> ${track.artist}</div>
+                            <div style="margin-bottom: 15px;"><strong>Genre:</strong> ${track.genre}</div>
+                            <div style="margin-bottom: 15px;"><strong>Investment:</strong> ${formatCurrency(track.investment)}</div>
+                            <div style="margin-bottom: 15px;"><strong>Revenue:</strong> ${formatCurrency(revenue)}</div>
+                            <div style="margin-bottom: 15px;"><strong>Profit/Loss:</strong> <span class="${profit >= 0 ? 'profitable' : 'loss'}">${formatCurrency(profit)}</span></div>
+                            <div style="margin-bottom: 15px;"><strong>ROI:</strong> <span class="${roi >= 0 ? 'profitable' : 'loss'}">${formatPercentage(roi)}</span></div>
+                            <div><strong>Status:</strong> <span class="status-badge ${status.class}">${status.label}</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>📈 Track Performance Notes</h3>
+                        <div style="padding: 20px; background: #f0f9ff; border-radius: 12px;">
+                            ${profit >= 0 ? 
+                                `<p style="color: #059669; font-weight: 600;">✅ This track has reached profitability</p>
+                                 <p>Break-even achieved with ${formatPercentage((revenue / track.investment - 1) * 100)} return on investment.</p>` :
+                                `<p style="color: #d97706; font-weight: 600;">⏳ Track is still developing</p>
+                                 <p>Needs ${formatCurrency(track.investment - revenue)} more revenue to break even.</p>
+                                 <p>Current progress: ${formatPercentage((revenue / track.investment) * 100)} of investment recovered.</p>`
+                            }
+                            <p style="margin-top: 15px;"><strong>Investment category:</strong> ${track.investment > 100000 ? 'High' : track.investment > 50000 ? 'Medium' : 'Low'} investment track</p>
+                            ${revenue > 0 ? '<div class="data-source-note">📊 Data compiled from monthly statement files and SUNDAY accounting</div>' : ''}
+                        </div>
+                    </div>
+                </div>
+                
+                ${monthlyData ? `
+                <div class="card" style="margin-top: 25px;">
+                    <h3>📅 Monthly Revenue Analysis</h3>
+                    <div style="padding: 20px; background: #f8fafc; border-radius: 12px;">
+                        ${monthlyAnalysis}
+                    </div>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="monthly-revenue-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top: 25px;">
+                    <h3>💰 Cumulative Revenue vs Investment</h3>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="cumulative-revenue-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top: 25px;">
+                    <h3>📄 Monthly Statements</h3>
+                    <div class="monthly-statements">
+                        ${renderMonthlyStatements(trackName)}
+                    </div>
+                </div>
+                ` : ''}
+            `;
+            
+            // Create charts if monthly data exists
+            if (monthlyData) {
+                setTimeout(() => {
+                    createMonthlyRevenueChart(trackName, monthlyData);
+                    createCumulativeRevenueChart(trackName, monthlyData, track.investment);
+                }, 100);
+            }
+        }
+
+        // Render comparison view
+        function renderComparisonView() {
+            const selector = document.getElementById('comparison-selector');
+            const filteredTracks = getFilteredTracks();
+            
+            selector.innerHTML = filteredTracks.map(([name, track]) => {
+                const revenue = realRevenueData[name] || 0;
+                const status = getTrackStatus(track.investment, revenue, monthlyRevenueData[name]);
+                
+                // Create safe ID and name for tracks with special characters
+                const safeId = name.replace(/[^a-zA-Z0-9]/g, '-');
+                const safeTrackName = name.replace(/'/g, "\\'").replace(/"/g, '\\"');
+                
+                return `
+                    <label class="track-checkbox" for="track-${safeId}">
+                        <input type="checkbox" id="track-${safeId}" value="${name}" onchange="toggleTrackSelection('${safeTrackName}')">
+                        <div class="track-info">
+                            <div class="track-name">${name}</div>
+                            <div class="artist-name">${track.artist}</div>
+                            <div style="margin-top: 8px; font-size: 0.85rem;">
+                                <div>${formatCurrency(revenue)} revenue</div>
+                            </div>
+                        </div>
+                        <span class="status-badge ${status.class}">
+                            ${status.label}
+                        </span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        // Toggle track selection
+        function toggleTrackSelection(trackName) {
+            const safeId = trackName.replace(/[^a-zA-Z0-9]/g, '-');
+            const checkbox = document.getElementById(`track-${safeId}`);
+            const label = checkbox.closest('.track-checkbox');
+            
+            if (checkbox.checked) {
+                selectedTracks.push(trackName);
+                label.classList.add('selected');
+            } else {
+                selectedTracks = selectedTracks.filter(t => t !== trackName);
+                label.classList.remove('selected');
+            }
+            
+            updateComparisonChart();
+        }
+
+        // Select all tracks
+        function selectAllTracks() {
+            selectedTracks = getFilteredTracks().map(([name]) => name);
+            updateCheckboxes();
+            updateComparisonChart();
+        }
+
+        // Clear all tracks
+        function clearAllTracks() {
+            selectedTracks = [];
+            updateCheckboxes();
+            updateComparisonChart();
+        }
+
+        // Select profitable tracks
+        function selectProfitableTracks() {
+            selectedTracks = getFilteredTracks().filter(([trackName]) => {
+                const revenue = realRevenueData[trackName] || 0;
+                return revenue >= allTracksData[trackName].investment;
+            }).map(([name]) => name);
+            updateCheckboxes();
+            updateComparisonChart();
+        }
+
+        // Select top revenue tracks
+        function selectTopRevenue() {
+            selectedTracks = getFilteredTracks()
+                .map(([name]) => ({ name, revenue: realRevenueData[name] || 0 }))
+                .sort((a, b) => b.revenue - a.revenue)
+                .slice(0, 10)
+                .map(item => item.name);
+            updateCheckboxes();
+            updateComparisonChart();
+        }
+
+        // Update checkboxes
+        function updateCheckboxes() {
+            getFilteredTracks().forEach(([name]) => {
+                const safeId = name.replace(/[^a-zA-Z0-9]/g, '-');
+                const checkbox = document.getElementById(`track-${safeId}`);
+                const label = checkbox?.closest('.track-checkbox');
+                
+                if (checkbox && label) {
+                    if (selectedTracks.includes(name)) {
+                        checkbox.checked = true;
+                        label.classList.add('selected');
+                    } else {
+                        checkbox.checked = false;
+                        label.classList.remove('selected');
+                    }
+                }
+            });
+        }
+
+        // Update comparison chart
+        function updateComparisonChart() {
+            if (comparisonChart) {
+                comparisonChart.destroy();
+            }
+            
+            if (selectedTracks.length === 0) {
+                return;
+            }
+            
+            const ctx = document.getElementById('comparison-chart').getContext('2d');
+            
+            const chartData = selectedTracks.map(trackName => ({
+                track: trackName.length > 15 ? trackName.substring(0, 15) + '...' : trackName,
+                revenue: realRevenueData[trackName] || 0,
+                investment: allTracksData[trackName].investment,
+                profit: (realRevenueData[trackName] || 0) - allTracksData[trackName].investment
+            }));
+            
+            comparisonChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.map(d => d.track),
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: chartData.map(d => d.revenue),
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Investment',
+                            data: chartData.map(d => d.investment),
+                            backgroundColor: '#ef4444',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Profit/Loss',
+                            data: chartData.map(d => d.profit),
+                            backgroundColor: chartData.map(d => d.profit >= 0 ? '#10b981' : '#f59e0b'),
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Toggle statement
+        function toggleStatement(statementId) {
+            const details = document.getElementById(`statement-${statementId}`);
+            const header = details.previousElementSibling;
+            
+            if (details.classList.contains('expanded')) {
+                details.classList.remove('expanded');
+                header.classList.remove('expanded');
+            } else {
+                details.classList.add('expanded');
+                header.classList.add('expanded');
+            }
+        }
+
+        // Render monthly statements
+        function renderMonthlyStatements(trackName) {
+            const statements = monthlyStatementDetails[trackName];
+            if (!statements) {
+                return '<p style="color: #6b7280; padding: 20px;">No statement details available for this track.</p>';
+            }
+            
+            const monthlyData = monthlyRevenueData[trackName];
+            const sortedMonths = Object.keys(monthlyData).sort().reverse();
+            
+            return sortedMonths.map(month => {
+                const statementData = statements[month];
+                if (!statementData) {
+                    return '';
+                }
+                
+                const [year, monthNum] = month.split('-');
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                const monthName = monthNames[parseInt(monthNum) - 1];
+                const statementId = `${trackName}-${month}`.replace(/[^a-zA-Z0-9]/g, '-');
+                
+                return `
+                    <div class="statement-month">
+                        <div class="statement-header" onclick="toggleStatement('${statementId}')">
+                            <h4>${monthName} ${year} <span class="expand-icon">▶</span></h4>
+                            <span class="statement-total">${formatCurrency(statementData.total)}</span>
+                        </div>
+                        <div class="statement-details" id="statement-${statementId}">
+                            <table class="statement-table">
+                                <thead>
+                                    <tr>
+                                        <th>Platform</th>
+                                        <th style="text-align: right;">Revenue</th>
+                                        <th style="text-align: right;">Share</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${statementData.platforms.map(platform => `
+                                        <tr>
+                                            <td class="statement-platform">${platform.name}</td>
+                                            <td style="text-align: right;">${formatCurrency(platform.revenue)}</td>
+                                            <td style="text-align: right; color: #6b7280;">${((platform.revenue / statementData.total) * 100).toFixed(1)}%</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Create monthly revenue chart
+        function createMonthlyRevenueChart(trackName, monthlyData) {
+            if (monthlyRevenueChart) {
+                monthlyRevenueChart.destroy();
+            }
+            
+            const ctx = document.getElementById('monthly-revenue-chart').getContext('2d');
+            const months = Object.keys(monthlyData).sort();
+            const revenues = months.map(m => monthlyData[m]);
+            
+            monthlyRevenueChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: months.map(m => {
+                        const [year, month] = m.split('-');
+                        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        return `${monthNames[parseInt(month) - 1]} ${year.slice(2)}`;
+                    }),
+                    datasets: [{
+                        label: 'Monthly Revenue',
+                        data: revenues,
+                        backgroundColor: revenues.map((r, i) => {
+                            const max = Math.max(...revenues);
+                            return r === max ? '#10b981' : '#3b82f6';
+                        }),
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create cumulative revenue chart
+        function createCumulativeRevenueChart(trackName, monthlyData, investment) {
+            if (platformsChart) {
+                platformsChart.destroy();
+            }
+            
+            const ctx = document.getElementById('cumulative-revenue-chart').getContext('2d');
+            const months = Object.keys(monthlyData).sort();
+            let cumulative = 0;
+            const cumulativeData = months.map(m => {
+                cumulative += monthlyData[m];
+                return cumulative;
+            });
+            
+            // Find break-even point
+            const breakEvenIndex = cumulativeData.findIndex(val => val >= investment);
+            
+            platformsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months.map(m => {
+                        const [year, month] = m.split('-');
+                        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        return `${monthNames[parseInt(month) - 1]} ${year.slice(2)}`;
+                    }),
+                    datasets: [
+                        {
+                            label: 'Cumulative Revenue',
+                            data: cumulativeData,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Investment',
+                            data: months.map(() => investment),
+                            borderColor: '#ef4444',
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                                }
+                            }
+                        },
+                        annotation: breakEvenIndex >= 0 ? {
+                            annotations: {
+                                breakeven: {
+                                    type: 'point',
+                                    xValue: breakEvenIndex,
+                                    yValue: investment,
+                                    backgroundColor: '#10b981',
+                                    radius: 8,
+                                    label: {
+                                        enabled: true,
+                                        content: 'Break-even',
+                                        position: 'top'
+                                    }
+                                }
+                            }
+                        } : undefined
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Export data function
+        function exportToCSV() {
+            const filteredTracks = getFilteredTracks();
+            let csv = 'Track,Artist,Genre,Investment,Revenue,Profit/Loss,ROI,Status\n';
+            
+            filteredTracks.forEach(([trackName, trackData]) => {
+                const revenue = realRevenueData[trackName] || 0;
+                const profit = revenue - trackData.investment;
+                const roi = ((revenue - trackData.investment) / trackData.investment * 100);
+                const status = getTrackStatus(trackData.investment, revenue, monthlyRevenueData[trackName]);
+                
+                csv += `"${trackName}","${trackData.artist}","${trackData.genre}",${trackData.investment},${revenue},${profit},${roi.toFixed(2)}%,"${status.label}"\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'music_portfolio_export.csv');
+            a.click();
+        }
+
+        // Create genre chart
+        function createGenreChart() {
+            if (genreChart) {
+                genreChart.destroy();
+            }
+            
+            const ctx = document.getElementById('genre-chart').getContext('2d');
+            
+            // Calculate genre statistics
+            const genreStats = {};
+            const filteredTracks = getFilteredTracks();
+            
+            filteredTracks.forEach(([trackName, trackData]) => {
+                const genre = trackData.genre;
+                const revenue = realRevenueData[trackName] || 0;
+                const investment = trackData.investment;
+                
+                if (!genreStats[genre]) {
+                    genreStats[genre] = {
+                        revenue: 0,
+                        investment: 0,
+                        count: 0,
+                        profitable: 0
+                    };
+                }
+                
+                genreStats[genre].revenue += revenue;
+                genreStats[genre].investment += investment;
+                genreStats[genre].count++;
+                if (revenue >= investment) {
+                    genreStats[genre].profitable++;
+                }
+            });
+            
+            const genres = Object.keys(genreStats);
+            const genreROIs = genres.map(genre => {
+                const stat = genreStats[genre];
+                return ((stat.revenue - stat.investment) / stat.investment * 100);
+            });
+            
+            genreChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: genres,
+                    datasets: [{
+                        label: 'Genre ROI %',
+                        data: genreROIs,
+                        backgroundColor: genreROIs.map(roi => roi >= 0 ? '#10b981' : '#ef4444'),
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const genre = context.label;
+                                    const stat = genreStats[genre];
+                                    return [
+                                        `ROI: ${context.parsed.y.toFixed(1)}%`,
+                                        `Tracks: ${stat.count}`,
+                                        `Profitable: ${stat.profitable}/${stat.count}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create investment distribution chart
+        function createInvestmentChart() {
+            if (investmentChart) {
+                investmentChart.destroy();
+            }
+            
+            const ctx = document.getElementById('investment-chart').getContext('2d');
+            
+            // Categorize investments
+            const categories = {
+                'Low (<20k)': { count: 0, total: 0, revenue: 0 },
+                'Medium (20-50k)': { count: 0, total: 0, revenue: 0 },
+                'High (50-100k)': { count: 0, total: 0, revenue: 0 },
+                'Premium (>100k)': { count: 0, total: 0, revenue: 0 }
+            };
+            
+            const filteredTracks = getFilteredTracks();
+            filteredTracks.forEach(([trackName, trackData]) => {
+                const investment = trackData.investment;
+                const revenue = realRevenueData[trackName] || 0;
+                let category;
+                
+                if (investment < 20000) category = 'Low (<20k)';
+                else if (investment < 50000) category = 'Medium (20-50k)';
+                else if (investment < 100000) category = 'High (50-100k)';
+                else category = 'Premium (>100k)';
+                
+                categories[category].count++;
+                categories[category].total += investment;
+                categories[category].revenue += revenue;
+            });
+            
+            const categoryNames = Object.keys(categories);
+            const avgROIs = categoryNames.map(cat => {
+                const data = categories[cat];
+                if (data.total === 0) return 0;
+                return ((data.revenue - data.total) / data.total * 100);
+            });
+            
+            investmentChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: categoryNames.map(cat => `${cat} (${categories[cat].count})`),
+                    datasets: [{
+                        data: categoryNames.map(cat => categories[cat].count),
+                        backgroundColor: [
+                            '#3b82f6',
+                            '#8b5cf6',
+                            '#f59e0b',
+                            '#ef4444'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const category = categoryNames[context.dataIndex];
+                                    const data = categories[category];
+                                    const roi = avgROIs[context.dataIndex];
+                                    return [
+                                        `Tracks: ${data.count}`,
+                                        `Total Investment: ${formatCurrency(data.total)}`,
+                                        `Total Revenue: ${formatCurrency(data.revenue)}`,
+                                        `Avg ROI: ${roi.toFixed(1)}%`
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize dashboard
+        function init() {
+            setTimeout(() => {
+                renderPortfolioView();
+            }, 50);
+        }
+
+        // Start the dashboard
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+        
+        // Backup initialization
+        window.addEventListener('load', function() {
+            const investmentEl = document.getElementById('total-investment');
+            if (investmentEl && investmentEl.textContent === '-') {
+                init();
+            }
+        });
+    </script>
+</body>
+</html>
